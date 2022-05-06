@@ -5,7 +5,7 @@ import sys
 
 header = "ply\n\
 format ascii 1.0\n\
-element vertex \(vertexCount)\n\
+element vertex {}\n\
 property float x\n\
 property float y\n\
 property float z\n\
@@ -40,7 +40,7 @@ def get_pointCloud(depth, img, intrinsic):
     # Displaying the array
     file = open("cloud.ply", "w+")    
     content = str(points)
-    file.write(header)
+    file.write(header.format(points.shape[0]))
     for row in points:
         line = ""
         for i in range(3):
