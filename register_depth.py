@@ -3,6 +3,54 @@ import cv2
 import matplotlib.pyplot as plt
 import sys
 
+header = "ply\n\
+format ascii 1.0\n\
+element vertex \(vertexCount)\n\
+property float x\n\
+property float y\n\
+property float z\n\
+property uint8 red\n\
+property uint8 green\n\
+property uint8 blue\n\
+end_header\n" 
+
+def get_colorPointCloud(depth, img, intrinsic):
+    rows, cols = depth.shape
+    c, r = np.meshgrid(np.arange(cols), np.arange(rows), sparse=True)
+    valid = (depth > 0) # & (depth < maxval)
+    z = depth #np.where(valid, depth, np.nan)
+    x =  z * (c - intrinsic[0,2]) / intrinsic[0,0] #np.where(valid, z * (c - self.rgb_cx) / self.rgb_fx, 0)
+    y = z * (r - intrinsic[1,2]) / intrinsic[1,1] # np.where(valid, z * (r - self.rgb_cy) / self.rgb_fy, 0)  
+    return np.dstack((x,y,z,img)).astype(np.float32) 
+
+def get_pointCloud(depth, img, intrinsic):
+    """
+    To generate pointCloud2 message refer to:
+    https://gist.github.com/lucasw/ea04dcd65bc944daea07612314d114bb
+    """
+    points = []
+    points = get_colorPointCloud(depth, img, intrinsic)
+    rows,cols,channels = points.shape
+    points = points.reshape(rows*cols,channels)
+    points = points[~np.isnan(points).any(axis=1), :]
+    print("Before sampling: ", points.shape)
+    factor=20
+    points = points[::factor]
+    print("After sampling: ",points.shape)
+    # Displaying the array
+    file = open("cloud.ply", "w+")    
+    content = str(points)
+    file.write(header)
+    for row in points:
+        line = ""
+        for i in range(3):
+            line += str(row[i])+" "
+        for i in range(3,6):
+            line += str(int(row[i])) + " "
+        file.write(line + "\n")
+    file.close()
+    return 0
+
 # my implementaion that produces the expected output
 def registerDepth(intrinsics_depth, intrinsics_color, dist_coef_color, extrinsics, depth, shape, depthDilation):
     #assert dist_coef_color is None
@@ -28,19 +76,19 @@ def registerDepth(intrinsics_depth, intrinsics_color, dist_coef_color, extrinsic
 # Azure and helios intrinsic parameters. These values were obtained
 # from the accompaning software to each camera
 azure_K = np.array([975.7100830078125, 0.0, 1028.1383056640625, 
-					0.0, 975.6234130859375, 766.72119140625, 
-					0.0, 0.0, 1.0]).reshape(3,3)
+                    0.0, 975.6234130859375, 766.72119140625, 
+                    0.0, 0.0, 1.0]).reshape(3,3)
 azure_D = np.array( [0.585040807723999, -2.6008243560791016, 0.0004827356606256217, 
-					-0.00011253785487497225, 1.4300870895385742, 0.4682285487651825, 
-					-2.440357208251953, 1.367829442024231])
+                    -0.00011253785487497225, 1.4300870895385742, 0.4682285487651825, 
+                    -2.440357208251953, 1.367829442024231])
 azure_width = 2048
 azure_height = 1536
 
 helios_K = np.array([525.993332,0., 318.877762,
-					 0, 525.993332, 238.640747,
-					 0., 0., 1]).reshape(3,3)
+                     0, 525.993332, 238.640747,
+                     0., 0., 1]).reshape(3,3)
 helios_D = np.array([-0.228452,0.109995, 
-					 -0.000057,-0.000041, -0.038704])
+                     -0.000057,-0.000041, -0.038704])
 helios_width = 640
 helios_height = 480
 
@@ -60,12 +108,12 @@ helios_depth = helios_data[:,:,2].astype(np.float32)*0.25/1000.
 
 #Homogeneous transform from helios to azure
 R = np.array([[ 0.9998842, 0.0103368,-0.01116872],
- 			  [-0.01028264,0.99993515,0.00489567],
-   			  [ 0.0112186, -0.00478026,0.99992564]])
+              [-0.01028264,0.99993515,0.00489567],
+              [ 0.0112186, -0.00478026,0.99992564]])
 t = np.array([-0.00307042,
- 			  -0.06776994,
-   			  -0.02385673])
-Rha = np.zeros((4,4), dtype=np.float32)	
+              -0.06776994,
+              -0.02385673])
+Rha = np.zeros((4,4), dtype=np.float32) 
 Rha[0:3,0:3] = R
 Rha[0:3,3] = t
 Rha[3,3] = 1.0
@@ -89,9 +137,12 @@ helios_depth_undistort = cv2.remap(helios_depth, mapx, mapy, cv2.INTER_NEAREST)
 
 
 # project the depth image onto the rgb image coordinate frame: registration
-registered_depth = registerDepth(helios_K_new, azure_K, azure_D, Rha, helios_depth_undistort, (azure_width, azure_height), depthDilation=False)
+registered_depth = registerDepth(helios_K_new, azure_K_new, azure_D, Rha, helios_depth_undistort, (azure_width, azure_height), depthDilation=False)
 registered_depth_gray = (255 * registered_depth / np.max(registered_depth)).astype(np.uint8)
 aligned_depth_colormap = cv2.applyColorMap( registered_depth_gray, cv2.COLORMAP_HOT )
+
+# create and save a point cloud to verify the result
+pc_pcl = get_pointCloud(registered_depth, azure_image_undistort, azure_K)
 
 # show images
 fig1 = plt.figure()
