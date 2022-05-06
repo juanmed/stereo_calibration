@@ -33,10 +33,14 @@ def get_pointCloud(depth, img, intrinsic):
     rows,cols,channels = points.shape
     points = points.reshape(rows*cols,channels)
     points = points[~np.isnan(points).any(axis=1), :]
-    print("Before sampling: ", points.shape)
-    factor=20
-    points = points[::factor]
-    print("After sampling: ",points.shape)
+    cond1= (points[:,0]>0) 
+    cond2= (points[:,1]>0)
+    cond3= (points[:,2]>0)
+    points = points[np.logical_and(cond1,np.logical_and(cond2, cond3))]
+    #print("Before sampling: ", points.shape)
+    #factor=1
+    #points = points[::factor]
+    #print("After sampling: ",points.shape)
     # Displaying the array
     file = open("cloud.ply", "w+")    
     content = str(points)
@@ -128,6 +132,7 @@ Rha = np.array([0.999822, -0.010424, 0.015758, -0.001993,
 # but for depth, NEAREST interpolation must be used, otherwise 
 # some incorrect artifacts appear
 azure_K_new, roi = cv2.getOptimalNewCameraMatrix(azure_K, azure_D, (azure_width, azure_height), 1.0, (azure_width,azure_height))
+print(azure_K_new)
 azure_image_undistort = cv2.undistort(azure_image, azure_K, azure_D, None, azure_K_new) 
 
 helios_K_new, roi = cv2.getOptimalNewCameraMatrix(helios_K, helios_D, (helios_width, helios_height), 1.0, (helios_width,helios_height))
@@ -142,7 +147,7 @@ registered_depth_gray = (255 * registered_depth / np.max(registered_depth)).asty
 aligned_depth_colormap = cv2.applyColorMap( registered_depth_gray, cv2.COLORMAP_HOT )
 
 # create and save a point cloud to verify the result
-pc_pcl = get_pointCloud(registered_depth, azure_image_undistort, azure_K)
+pc_pcl = get_pointCloud(helios_depth, np.ones((helios_depth.shape[0], helios_depth.shape[1],3))*255, helios_K)
 
 # show images
 fig1 = plt.figure()

@@ -125,6 +125,17 @@ print("Orientation:\n{}".format(metric['R']))
 print("Fundamental Matrix:\n{}".format(metric['F']))
 print("Essential Matrix:\n{}".format(metric['E']))
 
+H_AH = np.zeros((4,4))  # Homogeneous transform from azure to helios
+H_AH[0:3,0:3] = metric['R']
+H_AH[0:3,3] = metric['t'].T[0]
+H_AH[3,3] = 1.0
+
+print("Transform Azure -> Helios obtained by stereoCalibrate")
+print("[%f, %f, %f, %f,"%(H_AH[0][0], H_AH[0][1], H_AH[0][2], H_AH[0][3]))
+print("%f, %f, %f, %f,"%(H_AH[1][0], H_AH[1][1], H_AH[1][2], H_AH[1][3]))
+print("%f, %f, %f, %f,"%(H_AH[2][0], H_AH[2][1], H_AH[2][2], H_AH[2][3]))
+print("%f, %f, %f, %f]"%(H_AH[3][0], H_AH[3][1], H_AH[3][2], H_AH[3][3]))
+
 # show images
 fig1 = plt.figure()
 ax1 = fig1.add_subplot(1,2,1)
@@ -176,11 +187,14 @@ T_AH = T_WH.dot(T_AW) # Azure -> Helios Transformation
 T_HA = np.linalg.inv(T_AH)
 #T_AH = T_WH.dot(np.linalg.inv(T_WA))
 
+print("Transforms obtained using independent PnP reprojection")
+print("Transfrom Azure -> Helios")
 print("[%f, %f, %f, %f,"%(T_AH[0][0], T_AH[0][1], T_AH[0][2], T_AH[0][3]))
 print("%f, %f, %f, %f,"%(T_AH[1][0], T_AH[1][1], T_AH[1][2], T_AH[1][3]))
 print("%f, %f, %f, %f,"%(T_AH[2][0], T_AH[2][1], T_AH[2][2], T_AH[2][3]))
 print("%f, %f, %f, %f]"%(T_AH[3][0], T_AH[3][1], T_AH[3][2], T_AH[3][3]))
 
+print("Tranform Helios - > Azure")
 print("[%f, %f, %f, %f,"%(T_HA[0][0], T_HA[0][1], T_HA[0][2], T_HA[0][3]))
 print("%f, %f, %f, %f,"%(T_HA[1][0], T_HA[1][1], T_HA[1][2], T_HA[1][3]))
 print("%f, %f, %f, %f,"%(T_HA[2][0], T_HA[2][1], T_HA[2][2], T_HA[2][3]))
